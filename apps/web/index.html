@@ -69,7 +69,7 @@ body:after{width:260px;height:260px;background:#c026d3;right:-70px;bottom:8%;ani
 </div>
 <script>
 const SIGNALING_URL="wss://idors.onrender.com";
-let authToken=null;
+let 
 let registerMode=false;
 const identityKey="idors:peer-id";
 let myId=localStorage.getItem(identityKey);
@@ -78,9 +78,9 @@ if(!myId){
   localStorage.setItem(identityKey,myId);
 }
 let ws;
-function startSocket(){ws=new WebSocket(SIGNALING_URL);function handleMessage(event){setConnected(true);ws.send(JSON.stringify({type:"auth",token:authToken}));};/* socket handlers moved to handleMessage */
+function startSocket(){ws=new WebSocket(SIGNALING_URL);function handleMessage(event){setConnected(true);};/* socket handlers moved to handleMessage */
 /*setConnected(false);$("subtitle").textContent="Reconnecting…";setTimeout(()=>location.reload(),3000)};*/ws.onmessage=handleMessage}
-async function auth(){const username=$("username").value.trim(),password=$("password").value;if(!username||!password)return;const endpoint=registerMode?"/api/register":"/api/login";const r=await fetch(endpoint,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({username,password})});const data=await r.json();if(!data.ok){$("authText").textContent=data.error==="exists"?"Username already exists":"Invalid credentials or password";return}authToken=document.cookie.split("idors_session=")[1]?.split(";")[0]||"";$("auth").remove();startSocket()}
+async function auth(){const username=$("username").value.trim(),password=$("password").value;if(!username||!password)return;const endpoint=registerMode?"/api/register":"/api/login";const r=await fetch(endpoint,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({username,password})});const data=await r.json();if(!data.ok){$("authText").textContent=data.error==="exists"?"Username already exists":"Invalid credentials or password";return}")[0]||"";$("auth").remove();startSocket()}
 $("authBtn").onclick=auth;$("authSwitch").onclick=()=>{registerMode=!registerMode;$("authText").textContent=registerMode?"Create your account":"Sign in to your account";$("authBtn").textContent=registerMode?"Create account":"Sign in";$("authSwitch").textContent=registerMode?"I already have an account":"Create an account"};
 const peers=new Map();
 const peerElements=new Map();
