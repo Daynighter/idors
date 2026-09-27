@@ -69,12 +69,31 @@ body:after{width:260px;height:260px;background:#c026d3;right:-70px;bottom:8%;ani
 </div>
 <script>
 const SIGNALING_URL="wss://idors.onrender.com";
+const identityKey="idors:peer-id";
+let myId=localStorage.getItem(identityKey);
+if(!myId){
+  myId=crypto.randomUUID();
+  localStorage.setItem(identityKey,myId);
+}
 const ws=new WebSocket(SIGNALING_URL);
 const peers=new Map();
 const peerElements=new Map();
 const chats=new Map();
 let myId=null;
 let selected=null;
+
+function saveChats(){
+  const serial={};
+  for(const [id,list] of chats) serial[id]=list;
+  localStorage.setItem("idors:chats",JSON.stringify(serial));
+}
+function loadChats(){
+  try{
+    const serial=JSON.parse(localStorage.getItem("idors:chats")||"{}");
+    for(const [id,list] of Object.entries(serial)) chats.set(id,Array.isArray(list)?list:[]);
+  }catch{}
+}
+loadChats();
 
 function renderChat(id){
   const list=chats.get(id)||[];
@@ -215,6 +234,7 @@ async function connectPeer(id,offerer){
     channel.onmessage=e=>{
       const message={text:e.data,mine:false,time:timeNow()};
       chats.get(id).push(message);
+      saveChats();
       if(selected===id) addMessage(message.text,false,message.time);
     };
   };
@@ -231,6 +251,7 @@ async function connectPeer(id,offerer){
 
 ws.onopen=()=>{
   setConnected(true);
+  ws.send(JSON.stringify({type:"register",peerId:myId}));
 };
 
 ws.onclose=()=>{
@@ -247,6 +268,7 @@ ws.onmessage=async event=>{
 
   if(m.type==="welcome"){
     myId=m.peerId;
+    localStorage.setItem(identityKey,myId);
     return;
   }
 
@@ -289,6 +311,7 @@ $("form").onsubmit=event=>{
   const message={text,mine:true,time:timeNow()};
   channel.send(text);
   chats.get(selected).push(message);
+  saveChats();
   addMessage(message.text,true,message.time);
   $("input").value="";
   $("input").focus();
