@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>iDOrs</title>
+<title>iDors</title>
 <style>
 *{box-sizing:border-box}
 :root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#fff;background:#090611}
@@ -43,7 +43,7 @@ body:after{width:260px;height:260px;background:#c026d3;right:-70px;bottom:8%;ani
 @media(max-width:700px){.app{grid-template-columns:1fr}.sidebar{display:none}.head{margin:10px 10px 0}.composer{margin:0 10px 10px}.messages{padding:24px 16px}}
 .auth{position:fixed;inset:0;z-index:20;display:grid;place-items:center;background:#090611cc;backdrop-filter:blur(30px)}.auth-box{width:min(380px,calc(100% - 32px));padding:28px;border:1px solid #ffffff16;border-radius:28px;background:#ffffff0b;box-shadow:0 25px 80px #0005}.auth-box h1{margin:0 0 8px}.auth-box p{color:#a99bb9;font-size:13px}.auth-box input{width:100%;margin:7px 0;padding:14px;border:1px solid #ffffff15;border-radius:16px;background:#ffffff0a;color:#fff;outline:none}.auth-box button{width:100%;margin-top:10px;padding:13px;border:0;border-radius:16px;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;font-weight:700}.auth-switch{text-align:center;color:#b9a9c8;font-size:12px;margin-top:14px;cursor:pointer}</style>
 </head>
-<body><div id="auth" class="auth"><div class="auth-box"><h1>iDOrs</h1><p id="authText">Sign in to your account</p><input id="username" placeholder="Username" autocomplete="username"><input id="password" type="password" placeholder="Password" autocomplete="current-password"><button id="authBtn">Sign in</button><div id="authSwitch" class="auth-switch">Create an account</div></div></div>
+<body><div id="auth" class="auth"><div class="auth-box"><h1>iDors</h1><p id="authText">Sign in to your account</p><div id="authError" style="min-height:18px;color:#f0b4ff;font-size:12px"></div><input id="username" placeholder="Username" autocomplete="username"><input id="password" type="password" placeholder="Password" autocomplete="current-password"><button id="authBtn">Sign in</button><div id="authSwitch" class="auth-switch">Create an account</div></div></div>
 <div class="app">
 <aside class="sidebar">
   <div class="brand">iDOrs</div>
@@ -69,263 +69,142 @@ body:after{width:260px;height:260px;background:#c026d3;right:-70px;bottom:8%;ani
 </div>
 <script>
 const SIGNALING_URL="wss://idors.onrender.com";
-let 
+const $=id=>document.getElementById(id);
 let registerMode=false;
-const identityKey="idors:peer-id";
-let myId=localStorage.getItem(identityKey);
-if(!myId){
-  myId=crypto.randomUUID();
-  localStorage.setItem(identityKey,myId);
-}
-let ws;
-function startSocket(){ws=new WebSocket(SIGNALING_URL);function handleMessage(event){setConnected(true);};/* socket handlers moved to handleMessage */
-/*setConnected(false);$("subtitle").textContent="Reconnecting…";setTimeout(()=>location.reload(),3000)};*/ws.onmessage=handleMessage}
-async function auth(){const username=$("username").value.trim(),password=$("password").value;if(!username||!password)return;const endpoint=registerMode?"/api/register":"/api/login";const r=await fetch(endpoint,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({username,password})});const data=await r.json();if(!data.ok){$("authText").textContent=data.error==="exists"?"Username already exists":"Invalid credentials or password";return}")[0]||"";$("auth").remove();startSocket()}
-$("authBtn").onclick=auth;$("authSwitch").onclick=()=>{registerMode=!registerMode;$("authText").textContent=registerMode?"Create your account":"Sign in to your account";$("authBtn").textContent=registerMode?"Create account":"Sign in";$("authSwitch").textContent=registerMode?"I already have an account":"Create an account"};
+let ws=null;
+let myId=localStorage.getItem("idors:peer-id")||crypto.randomUUID();
+localStorage.setItem("idors:peer-id",myId);
+let selected=null;
 const peers=new Map();
 const peerElements=new Map();
 const chats=new Map();
-let myId=null;
-let selected=null;
-
-function saveChats(){
-  const serial={};
-  for(const [id,list] of chats) serial[id]=list;
-  localStorage.setItem("idors:chats",JSON.stringify(serial));
-}
-function loadChats(){
-  try{
-    const serial=JSON.parse(localStorage.getItem("idors:chats")||"{}");
-    for(const [id,list] of Object.entries(serial)) chats.set(id,Array.isArray(list)?list:[]);
-  }catch{}
-}
-loadChats();
-
-function renderChat(id){
-  const list=chats.get(id)||[];
-  $("messages").innerHTML="";
-  if(!list.length){
-    const empty=document.createElement("div");
-    empty.id="empty";
-    empty.className="empty";
-    empty.textContent="No messages yet";
-    $("messages").append(empty);
-    return;
-  }
-  for(const message of list) addMessage(message.text,message.mine,message.time);
-  $("messages").scrollTop=$("messages").scrollHeight;
-}
-function selectPeer(id){
-  if(!peers.has(id)) return;
-  selected=id;
-  if(!chats.has(id)) chats.set(id,[]);
-  document.querySelectorAll(".peer").forEach(x=>x.classList.toggle("active",x.dataset.peer===id));
-  const row=peerElements.get(id);
-  const label=row?.querySelector(".peer-name")?.textContent||("Peer "+id.slice(0,8));
-  $("title").textContent=label;
-  renderChat(id);
-  const state=peers.get(id);
-  $("subtitle").textContent=state?.channel?.readyState==="open"?"Connected":"Connecting…";
-  updateComposer();
-}
-
-function removePeer(id){
-  const state=peers.get(id);
-  try{state?.channel?.close()}catch{}
-  try{state?.pc?.close()}catch{}
-  peers.delete(id);
-  peerElements.get(id)?.remove();
-  peerElements.delete(id);
-  if(selected===id){
-    const next=[...peers.keys()][0];
-    if(next) selectPeer(next);
-    else {
-      selected=null;
-      $("title").textContent="Direct chat";
-      $("subtitle").textContent="Waiting for a peer";
-      updateComposer();
-    }
-  }
-}
-
-const $=id=>document.getElementById(id);
 
 function setConnected(connected){
   $("loader").style.display=connected?"none":"block";
   $("dot").classList.toggle("online",connected);
 }
-
-function timeNow(){
-  return new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
-}
+function timeNow(){return new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});}
+function saveChats(){const serial={};for(const [id,list] of chats)serial[id]=list;localStorage.setItem("idors:chats",JSON.stringify(serial));}
+function loadChats(){try{const s=JSON.parse(localStorage.getItem("idors:chats")||"{}");for(const [id,list] of Object.entries(s))if(Array.isArray(list))chats.set(id,list);}catch{}}
+loadChats();
 
 function addMessage(text,mine=false,time=timeNow()){
   $("empty")?.remove();
-  const wrap=document.createElement("div");
-  wrap.className="msg"+(mine?" mine":"");
-  const body=document.createElement("div");
-  body.textContent=text;
-  const time=document.createElement("div");
-  time.className="time";
-  time.textContent=time;
-  wrap.append(body,time);
-  $("messages").append(wrap);
-  $("messages").scrollTop=$("messages").scrollHeight;
+  const wrap=document.createElement("div"); wrap.className="msg"+(mine?" mine":"");
+  const body=document.createElement("div"); body.textContent=text;
+  const stamp=document.createElement("div"); stamp.className="time"; stamp.textContent=time;
+  wrap.append(body,stamp); $("messages").append(wrap); $("messages").scrollTop=$("messages").scrollHeight;
 }
-
+function renderChat(id){
+  $("messages").innerHTML="";
+  const list=chats.get(id)||[];
+  if(!list.length){const e=document.createElement("div");e.id="empty";e.className="empty";e.textContent="No messages yet";$("messages").append(e);return;}
+  for(const m of list)addMessage(m.text,m.mine,m.time);
+}
 function updateComposer(){
-  const channel=selected?peers.get(selected)?.channel:null;
-  const ready=channel?.readyState==="open";
-  $("input").disabled=!ready;
-  $("send").disabled=!ready;
+  const ch=selected?peers.get(selected)?.channel:null;
+  const ready=ch?.readyState==="open";
+  $("input").disabled=!ready;$("send").disabled=!ready;
   $("subtitle").textContent=ready?"Connected":"Connecting…";
   $("dot").classList.toggle("online",!!ready);
 }
-
-function createPeerElement(id){
+function createPeerElement(id,label){
   if(peerElements.has(id))return peerElements.get(id);
-  const row=document.createElement("div");
-  row.className="peer";
-  row.dataset.peer=id;
-  row.innerHTML='<div class="avatar">P</div><div><div class="peer-name">Peer '+id.slice(0,8)+'</div><div class="peer-state">Connecting…</div></div><span class="peer-check">✓</span>';
-  row.onclick=()=>selectPeer(id);
-  $("peers").append(row);
-  peerElements.set(id,row);
-  return row;
+  const row=document.createElement("div");row.className="peer";row.dataset.peer=id;
+  row.innerHTML='<div class="avatar">P</div><div><div class="peer-name"></div><div class="peer-state">Connecting…</div></div><span class="peer-check">✓</span>';
+  row.querySelector(".peer-name").textContent=label||"Peer "+id.slice(0,8);
+  row.onclick=()=>selectPeer(id);$("peers").append(row);peerElements.set(id,row);return row;
 }
-
-function updatePeerUI(id,state){
-  const row=peerElements.get(id);
-  if(!row)return;
-  row.querySelector(".peer-state").textContent=state;
+function selectPeer(id){
+  if(!peers.has(id))return;
+  selected=id;document.querySelectorAll(".peer").forEach(x=>x.classList.toggle("active",x.dataset.peer===id));
+  $("title").textContent=peerElements.get(id)?.querySelector(".peer-name")?.textContent||"Direct chat";
+  renderChat(id);updateComposer();
+}
+function updatePeerUI(id,state){peerElements.get(id)?.querySelector(".peer-state")?.replaceChildren(document.createTextNode(state));}
+function removePeer(id){
+  const s=peers.get(id);try{s?.channel?.close();s?.pc?.close();}catch{}
+  peers.delete(id);peerElements.get(id)?.remove();peerElements.delete(id);
+  if(selected===id){selected=null;$("title").textContent="Direct chat";$("subtitle").textContent="Waiting for a peer";updateComposer();}
 }
 
 async function connectPeer(id,offerer){
   if(peers.has(id))return peers.get(id);
-  const pc=new RTCPeerConnection({
-    iceServers:[
-      {urls:"stun:stun.l.google.com:19302"},
-      {urls:"stun:stun1.l.google.com:19302"}
-    ]
-  });
-  const state={pc,channel:null};
-  chats.set(id,chats.get(id)||[]);
-  peers.set(id,state);
-  createPeerElement(id);
-
-  pc.onicecandidate=e=>{
-    if(e.candidate&&ws.readyState===WebSocket.OPEN){
-      ws.send(JSON.stringify({type:"signal",to:id,data:{candidate:e.candidate}}));
-    }
-  };
-
-  pc.onconnectionstatechange=()=>{
-    const s=pc.connectionState;
-    updatePeerUI(id,s==="connected"?"Connected":s==="connecting"?"Connecting…":"Disconnected");
-    if(selected===id)updateComposer();
-  };
-
+  const pc=new RTCPeerConnection({iceServers:[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}]});
+  const state={pc,channel:null};peers.set(id,state);chats.set(id,chats.get(id)||[]);createPeerElement(id);
+  pc.onicecandidate=e=>{if(e.candidate&&ws?.readyState===WebSocket.OPEN)ws.send(JSON.stringify({type:"signal",to:id,data:{candidate:e.candidate}}));};
+  pc.onconnectionstatechange=()=>{const s=pc.connectionState;updatePeerUI(id,s==="connected"?"Connected":s==="connecting"?"Connecting…":"Disconnected");if(selected===id)updateComposer();};
   const attach=channel=>{
     state.channel=channel;
-    channel.onopen=()=>{
-      updatePeerUI(id,"Connected");
-      if(!selected) selectPeer(id);
-      updateComposer();
-    };
-    channel.onclose=()=>{
-      updatePeerUI(id,"Disconnected");
-      updateComposer();
-    };
+    channel.onopen=()=>{updatePeerUI(id,"Connected");if(!selected)selectPeer(id);updateComposer();};
+    channel.onclose=()=>{updatePeerUI(id,"Disconnected");updateComposer();};
     channel.onerror=()=>updatePeerUI(id,"Connection error");
-    channel.onmessage=e=>{
-      const message={text:e.data,mine:false,time:timeNow()};
-      chats.get(id).push(message);
-      saveChats();
-      if(selected===id) addMessage(message.text,false,message.time);
-    };
+    channel.onmessage=e=>{const m={text:e.data,mine:false,time:timeNow()};chats.get(id).push(m);saveChats();if(selected===id)addMessage(m.text,false,m.time);};
   };
-
-  if(offerer){
-    attach(pc.createDataChannel("idors-chat"));
-    await pc.setLocalDescription(await pc.createOffer());
-    ws.send(JSON.stringify({type:"signal",to:id,data:{description:pc.localDescription}}));
-  }else{
-    pc.ondatachannel=e=>attach(e.channel);
-  }
+  if(offerer){attach(pc.createDataChannel("idors-chat"));await pc.setLocalDescription(await pc.createOffer());ws.send(JSON.stringify({type:"signal",to:id,data:{description:pc.localDescription}}));}
+  else pc.ondatachannel=e=>attach(e.channel);
   return state;
 }
 
-ws.onopen=()=>{
-  setConnected(true);
-  ws.send(JSON.stringify({type:"register",peerId:myId}));
-};
-
-ws.onclose=()=>{
-  setConnected(false);
-  $("subtitle").textContent="Reconnecting…";
-  setTimeout(()=>location.reload(),3000);
-};
-
-ws.onerror=()=>setConnected(false);
-
-async function handleMessage(event){
-  let m;
-  try{m=JSON.parse(event.data)}catch{return}
-
-  if(m.type==="auth-ok"){ws.send(JSON.stringify({type:"register",peerId:myId}));return}
-  if(m.type==="already-online"){alert("This account is already connected on another browser.");ws.close();return}
-  if(m.type==="auth-error"){alert("Session expired. Please sign in again.");location.reload();return}
-
-  if(m.type==="welcome"){
-    myId=m.peerId;
-    localStorage.setItem(identityKey,myId);
-    return;
+async function loadMe(){
+  const r=await fetch("/api/me",{credentials:"same-origin"});
+  if(!r.ok)throw new Error("not-authenticated");
+  const d=await r.json(),p=d.profile;
+  if(p){
+    $("authText").textContent="Cuenta: @"+p.username;
+    $("authError").textContent=p.peer_code?"ID: "+p.peer_code:"";
   }
+  return p;
+}
+async function authenticate(){
+  const username=$("username").value.trim(),password=$("password").value;
+  $("authError").textContent="";
+  if(!username||!password){$("authError").textContent="Completa usuario y contraseña.";return;}
+  const endpoint=registerMode?"/api/register":"/api/login";
+  try{
+    const r=await fetch(endpoint,{method:"POST",headers:{"content-type":"application/json"},credentials:"same-origin",body:JSON.stringify({username,password})});
+    const d=await r.json();
+    if(!d.ok){$("authError").textContent=d.error==="exists"?"Ese usuario ya existe.":d.error==="invalid"?"Usuario o contraseña no válidos.":"No se pudo completar la operación.";return;}
+    $("auth").remove();
+    await startSocket();
+  }catch(e){$("authError").textContent="No se pudo conectar con el servidor.";}
+}
+$("authBtn").onclick=authenticate;
+$("password").addEventListener("keydown",e=>{if(e.key==="Enter")authenticate();});
+$("authSwitch").onclick=()=>{registerMode=!registerMode;$("authText").textContent=registerMode?"Create your account":"Sign in to your account";$("authBtn").textContent=registerMode?"Create account":"Sign in";$("authSwitch").textContent=registerMode?"I already have an account":"Create an account";$("authError").textContent="";};
 
-  if(m.type==="peer"){
-    const id=m.peerId;
-    if(id===myId)return;
-    createPeerElement(id);
-    if(!peers.has(id)) await connectPeer(id,myId<id);
-    return;
-  }
-
-  if(m.type==="peer-left"){
-    removePeer(m.peerId);
-    return;
-  }
-
-  if(m.type==="signal"){
-    let state=peers.get(m.from);
-    if(!state)state=await connectPeer(m.from,false);
-
-    if(m.data?.description){
-      await state.pc.setRemoteDescription(m.data.description);
-      if(m.data.description.type==="offer"){
-        await state.pc.setLocalDescription(await state.pc.createAnswer());
-        ws.send(JSON.stringify({type:"signal",to:m.from,data:{description:state.pc.localDescription}}));
-      }
+async function startSocket(){
+  try{const p=await loadMe(); if(p?.peer_code)$("subtitle").textContent="Tu ID "+p.peer_code;}catch{}
+  ws=new WebSocket(SIGNALING_URL);
+  ws.onopen=()=>{setConnected(true);};
+  ws.onclose=()=>{setConnected(false);$("subtitle").textContent="Reconnecting…";setTimeout(()=>location.reload(),3000);};
+  ws.onerror=()=>setConnected(false);
+  ws.onmessage=async event=>{
+    let m;try{m=JSON.parse(event.data)}catch{return}
+    if(m.type==="auth-ok"){ws.send(JSON.stringify({type:"register",peerId:myId}));return;}
+    if(m.type==="already-online"){alert("Esta cuenta ya está conectada en otro navegador.");ws.close();return;}
+    if(m.type==="welcome"){myId=m.peerId;localStorage.setItem("idors:peer-id",myId);return;}
+    if(m.type==="peer"){if(m.peerId!==myId){createPeerElement(m.peerId);if(!peers.has(m.peerId))await connectPeer(m.peerId,myId<m.peerId);}}
+    if(m.type==="peer-left")removePeer(m.peerId);
+    if(m.type==="signal"){
+      let state=peers.get(m.from);if(!state)state=await connectPeer(m.from,false);
+      if(m.data?.description){await state.pc.setRemoteDescription(m.data.description);if(m.data.description.type==="offer"){await state.pc.setLocalDescription(await state.pc.createAnswer());ws.send(JSON.stringify({type:"signal",to:m.from,data:{description:state.pc.localDescription}}));}}
+      if(m.data?.candidate)try{await state.pc.addIceCandidate(m.data.candidate)}catch{}
     }
-
-    if(m.data?.candidate){
-      try{await state.pc.addIceCandidate(m.data.candidate)}catch{}
-    }
-  }
-};
+  };
+}
 
 $("form").onsubmit=event=>{
   event.preventDefault();
-  const text=$("input").value.trim();
-  const channel=selected?peers.get(selected)?.channel:null;
+  const text=$("input").value.trim(),channel=selected?peers.get(selected)?.channel:null;
   if(!text||!channel||channel.readyState!=="open")return;
-  const message={text,mine:true,time:timeNow()};
-  channel.send(text);
-  chats.get(selected).push(message);
-  saveChats();
-  addMessage(message.text,true,message.time);
-  $("input").value="";
-  $("input").focus();
+  channel.send(text);const m={text,mine:true,time:timeNow()};chats.get(selected).push(m);saveChats();addMessage(m.text,true,m.time);$("input").value="";$("input").focus();
 };
+
+(async()=>{
+  try{await loadMe();$("auth").remove();await startSocket();}
+  catch{$("auth").style.display="grid";}
+})();
 </script>
 </body>
 </html>
