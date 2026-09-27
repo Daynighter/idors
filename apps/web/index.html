@@ -1,2 +1,257 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>iDOrs</title><style>*{box-sizing:border-box}body{margin:0;font-family:system-ui;background:#eef2f7;color:#182233}.app{height:100vh;max-width:1100px;margin:auto;display:grid;grid-template-columns:280px 1fr;background:#fff}.side{border-right:1px solid #ddd;background:#f7f9fc}.brand{font-size:25px;font-weight:800;padding:22px}.status{margin:0 16px 16px;padding:10px;border-radius:10px;background:#e7edf5;font-size:12px}.peer{padding:15px 18px;border-top:1px solid #e5e8ed;cursor:pointer}.peer.active{background:#deedff}.chat{display:grid;grid-template-rows:auto 1fr auto}.head{padding:17px 20px;border-bottom:1px solid #ddd;display:flex;justify-content:space-between}.messages{padding:22px;overflow:auto;background:#f3f6fa}.msg{width:max-content;max-width:70%;padding:10px 13px;border-radius:14px;background:#fff;margin:7px 0;box-shadow:0 1px 2px #0001}.mine{margin-left:auto;background:#dcebff}.composer{display:flex;gap:10px;padding:14px;border-top:1px solid #ddd}.composer input{flex:1;padding:13px;border:1px solid #ccd3dd;border-radius:12px}.composer button{padding:0 20px;border:0;border-radius:12px;background:#1683ff;color:white;font-weight:700}@media(max-width:650px){.app{grid-template-columns:1fr}.side{display:none}}</style></head><body><div class="app"><aside class="side"><div class="brand">iDOrs</div><div id="status" class="status">Connecting…</div><div id="peers"></div></aside><main class="chat"><header class="head"><strong id="title">Direct chat</strong><span id="state">Offline</span></header><section id="messages" class="messages"></section><form id="form" class="composer"><input id="input" placeholder="Write a message…" autocomplete="off"><button>Send</button></form></main></div><script>const SIGNALING_URL="wss://idors.onrender.com";
-const ws=new WebSocket(SIGNALING_URL);const peers=new Map();let myId,selected;const $=x=>document.getElementById(x),add=(t,m)=>{const e=document.createElement("div");e.className="msg"+(m?" mine":"");e.textContent=t;$("messages").append(e);$("messages").scrollTop=99999};async function connect(id,offerer){const pc=new RTCPeerConnection({iceServers:[{urls:"stun:stun.l.google.com:19302"}]});const s={pc,channel:null};peers.set(id,s);pc.onicecandidate=e=>e.candidate&&ws.send(JSON.stringify({type:"signal",to:id,data:{candidate:e.candidate}}));pc.onconnectionstatechange=()=>$("state").textContent=pc.connectionState;const attach=c=>{s.channel=c;c.onopen=()=>$("state").textContent="Connected";c.onmessage=e=>add(e.data,false)};if(offerer){attach(pc.createDataChannel("idors-chat"));await pc.setLocalDescription(await pc.createOffer());ws.send(JSON.stringify({type:"signal",to:id,data:{description:pc.localDescription}}))}else pc.ondatachannel=e=>attach(e.channel);return s}ws.onopen=()=>$("status").textContent="Signaling connected";ws.onmessage=async e=>{const m=JSON.parse(e.data);if(m.type==="welcome"){myId=m.peerId;$("status").textContent="Online · "+myId.slice(0,8)}if(m.type==="peer"){if(!peers.has(m.peerId))await connect(m.peerId,myId<m.peerId);const p=document.createElement("div");p.className="peer";p.textContent="Peer "+m.peerId.slice(0,8);p.onclick=()=>{selected=m.peerId;$("title").textContent=p.textContent;document.querySelectorAll(".peer").forEach(x=>x.classList.remove("active"));p.classList.add("active")};$("peers").append(p)}if(m.type==="signal"){let s=peers.get(m.from)||await connect(m.from,false);if(m.data.description){await s.pc.setRemoteDescription(m.data.description);if(m.data.description.type==="offer"){await s.pc.setLocalDescription(await s.pc.createAnswer());ws.send(JSON.stringify({type:"signal",to:m.from,data:{description:s.pc.localDescription}}))}}if(m.data.candidate)try{await s.pc.addIceCandidate(m.data.candidate)}catch{}}};$("form").onsubmit=e=>{e.preventDefault();const t=$("input").value.trim(),c=peers.get(selected)?.channel;if(!t||!c||c.readyState!=="open")return;c.send(t);add(t,true);$("input").value=""}</script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>iDOrs</title>
+<style>
+*{box-sizing:border-box}
+:root{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#172033;background:#eef2f7}
+body{margin:0;min-height:100vh;display:grid;place-items:center}
+.app{width:min(1120px,100%);height:min(760px,100vh);display:grid;grid-template-columns:300px 1fr;background:#fff;overflow:hidden;box-shadow:0 22px 70px #0002}
+.sidebar{border-right:1px solid #e5e9ef;background:#f8fafc;display:flex;flex-direction:column}
+.brand{padding:22px;font-size:25px;font-weight:800;letter-spacing:-.5px}
+.connection{height:42px;display:flex;align-items:center;justify-content:center;border-top:1px solid #e7ebf0;border-bottom:1px solid #e7ebf0}
+.loader{width:17px;height:17px;border:2px solid #d8e0ea;border-top-color:#2188ff;border-radius:50%;animation:spin .75s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.peers{overflow:auto;flex:1}
+.peer{padding:16px 18px;border-bottom:1px solid #e9edf2;cursor:pointer;display:flex;align-items:center;gap:12px}
+.peer:hover,.peer.active{background:#e8f2ff}
+.avatar{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:#dceeff;color:#1683ff;font-weight:800}
+.peer-name{font-weight:650}.peer-state{font-size:11px;opacity:.55;margin-top:2px}
+.chat{display:grid;grid-template-rows:auto 1fr auto;min-width:0}
+.head{height:70px;padding:0 22px;border-bottom:1px solid #e5e9ef;display:flex;align-items:center;gap:12px}
+.head-info{min-width:0}.title{font-weight:750}.subtitle{font-size:12px;opacity:.55;margin-top:2px}
+.status-dot{width:9px;height:9px;border-radius:50%;background:#aab4c1}.status-dot.online{background:#2dbd6e}
+.messages{padding:24px;overflow:auto;background:#f3f6fa}
+.empty{height:100%;display:grid;place-items:center;color:#9aa5b3;font-size:13px;text-align:center}
+.msg{width:max-content;max-width:min(70%,520px);padding:10px 13px;border-radius:15px;background:#fff;margin:7px 0;box-shadow:0 1px 2px #0001;line-height:1.4}
+.mine{margin-left:auto;background:#dceeff}
+.time{font-size:10px;opacity:.45;margin-top:4px;text-align:right}
+.composer{display:flex;gap:10px;padding:14px;border-top:1px solid #e5e9ef;background:#fff}
+.composer input{flex:1;min-width:0;padding:13px 15px;border:1px solid #d5dce5;border-radius:13px;outline:none}
+.composer input:focus{border-color:#2188ff}
+.composer button{border:0;border-radius:13px;padding:0 21px;background:#2188ff;color:#fff;font-weight:750;cursor:pointer}
+.composer button:disabled,.composer input:disabled{opacity:.5;cursor:not-allowed}
+@media(max-width:700px){.app{height:100vh;grid-template-columns:1fr}.sidebar{display:none}}
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="sidebar">
+  <div class="brand">iDOrs</div>
+  <div class="connection" aria-label="Connection status"><span id="loader" class="loader"></span></div>
+  <div id="peers" class="peers"></div>
+</aside>
+<main class="chat">
+  <header class="head">
+    <span id="dot" class="status-dot"></span>
+    <div class="head-info">
+      <div id="title" class="title">Direct chat</div>
+      <div id="subtitle" class="subtitle">Waiting for a peer</div>
+    </div>
+  </header>
+  <section id="messages" class="messages">
+    <div id="empty" class="empty">Waiting for a peer connection…</div>
+  </section>
+  <form id="form" class="composer">
+    <input id="input" placeholder="Write a message…" autocomplete="off" disabled>
+    <button id="send" disabled>Send</button>
+  </form>
+</main>
+</div>
+<script>
+const SIGNALING_URL="wss://idors.onrender.com";
+const ws=new WebSocket(SIGNALING_URL);
+const peers=new Map();
+const peerElements=new Map();
+let myId=null;
+let selected=null;
+
+const $=id=>document.getElementById(id);
+
+function setConnected(connected){
+  $("loader").style.display=connected?"none":"block";
+  $("dot").classList.toggle("online",connected);
+}
+
+function timeNow(){
+  return new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
+}
+
+function addMessage(text,mine=false){
+  $("empty")?.remove();
+  const wrap=document.createElement("div");
+  wrap.className="msg"+(mine?" mine":"");
+  const body=document.createElement("div");
+  body.textContent=text;
+  const time=document.createElement("div");
+  time.className="time";
+  time.textContent=timeNow();
+  wrap.append(body,time);
+  $("messages").append(wrap);
+  $("messages").scrollTop=$("messages").scrollHeight;
+}
+
+function updateComposer(){
+  const channel=selected?peers.get(selected)?.channel:null;
+  const ready=channel?.readyState==="open";
+  $("input").disabled=!ready;
+  $("send").disabled=!ready;
+  $("subtitle").textContent=ready?"Connected":"Connecting…";
+  $("dot").classList.toggle("online",!!ready);
+}
+
+function createPeerElement(id){
+  if(peerElements.has(id))return peerElements.get(id);
+  const row=document.createElement("div");
+  row.className="peer";
+  row.dataset.peer=id;
+  row.innerHTML='<div class="avatar">P</div><div><div class="peer-name">Peer '+id.slice(0,8)+'</div><div class="peer-state">Connecting…</div></div>';
+  row.onclick=()=>{
+    selected=id;
+    document.querySelectorAll(".peer").forEach(x=>x.classList.remove("active"));
+    row.classList.add("active");
+    $("title").textContent="Peer "+id.slice(0,8);
+    updateComposer();
+  };
+  $("peers").append(row);
+  peerElements.set(id,row);
+  return row;
+}
+
+function updatePeerUI(id,state){
+  const row=peerElements.get(id);
+  if(!row)return;
+  row.querySelector(".peer-state").textContent=state;
+}
+
+async function connectPeer(id,offerer){
+  if(peers.has(id))return peers.get(id);
+  const pc=new RTCPeerConnection({
+    iceServers:[
+      {urls:"stun:stun.l.google.com:19302"},
+      {urls:"stun:stun1.l.google.com:19302"}
+    ]
+  });
+  const state={pc,channel:null};
+  peers.set(id,state);
+  createPeerElement(id);
+
+  pc.onicecandidate=e=>{
+    if(e.candidate&&ws.readyState===WebSocket.OPEN){
+      ws.send(JSON.stringify({type:"signal",to:id,data:{candidate:e.candidate}}));
+    }
+  };
+
+  pc.onconnectionstatechange=()=>{
+    const s=pc.connectionState;
+    updatePeerUI(id,s==="connected"?"Connected":s==="connecting"?"Connecting…":"Disconnected");
+    if(selected===id)updateComposer();
+  };
+
+  const attach=channel=>{
+    state.channel=channel;
+    channel.onopen=()=>{
+      updatePeerUI(id,"Connected");
+      if(!selected){
+        selected=id;
+        createPeerElement(id).classList.add("active");
+        $("title").textContent="Peer "+id.slice(0,8);
+      }
+      updateComposer();
+    };
+    channel.onclose=()=>{
+      updatePeerUI(id,"Disconnected");
+      updateComposer();
+    };
+    channel.onerror=()=>updatePeerUI(id,"Connection error");
+    channel.onmessage=e=>addMessage(e.data,false);
+  };
+
+  if(offerer){
+    attach(pc.createDataChannel("idors-chat"));
+    await pc.setLocalDescription(await pc.createOffer());
+    ws.send(JSON.stringify({type:"signal",to:id,data:{description:pc.localDescription}}));
+  }else{
+    pc.ondatachannel=e=>attach(e.channel);
+  }
+  return state;
+}
+
+ws.onopen=()=>{
+  setConnected(true);
+};
+
+ws.onclose=()=>{
+  setConnected(false);
+  $("subtitle").textContent="Reconnecting…";
+  setTimeout(()=>location.reload(),3000);
+};
+
+ws.onerror=()=>setConnected(false);
+
+ws.onmessage=async event=>{
+  let m;
+  try{m=JSON.parse(event.data)}catch{return}
+
+  if(m.type==="welcome"){
+    myId=m.peerId;
+    return;
+  }
+
+  if(m.type==="peer"){
+    const id=m.peerId;
+    if(id===myId)return;
+    createPeerElement(id);
+    if(!peers.has(id)){
+      await connectPeer(id,myId<id);
+    }
+    return;
+  }
+
+  if(m.type==="peer-left"){
+    const row=peerElements.get(m.peerId);
+    row?.remove();
+    peerElements.delete(m.peerId);
+    peers.delete(m.peerId);
+    if(selected===m.peerId){
+      selected=null;
+      $("title").textContent="Direct chat";
+      $("subtitle").textContent="Waiting for a peer";
+      updateComposer();
+    }
+    return;
+  }
+
+  if(m.type==="signal"){
+    let state=peers.get(m.from);
+    if(!state)state=await connectPeer(m.from,false);
+
+    if(m.data?.description){
+      await state.pc.setRemoteDescription(m.data.description);
+      if(m.data.description.type==="offer"){
+        await state.pc.setLocalDescription(await state.pc.createAnswer());
+        ws.send(JSON.stringify({type:"signal",to:m.from,data:{description:state.pc.localDescription}}));
+      }
+    }
+
+    if(m.data?.candidate){
+      try{await state.pc.addIceCandidate(m.data.candidate)}catch{}
+    }
+  }
+};
+
+$("form").onsubmit=event=>{
+  event.preventDefault();
+  const text=$("input").value.trim();
+  const channel=selected?peers.get(selected)?.channel:null;
+  if(!text||!channel||channel.readyState!=="open")return;
+  channel.send(text);
+  addMessage(text,true);
+  $("input").value="";
+  $("input").focus();
+};
+</script>
+</body>
+</html>
