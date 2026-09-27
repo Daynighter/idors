@@ -8,8 +8,6 @@
     "dev": "node apps/signaling/server.mjs"
   },
   "dependencies": {
-    "ws": "^8.18.3",
-    "jsonwebtoken": "^9.0.2",
-    "pg": "^8.16.3"
+    "ws": "^8.18.3"
   }
 }
