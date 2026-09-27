@@ -1,6 +1,6 @@
-# iDOrs
+# iDors
 
-iDOrs is a web-first P2P messenger foundation using WebRTC and WebSocket signaling.
+iDors is a web-first P2P messenger foundation using WebRTC and WebSocket signaling.
 
 ## Structure
 
