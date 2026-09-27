@@ -30,7 +30,8 @@ const server=http.createServer(async(req,res)=>{
         if(exists.rowCount)return json(res,409,{ok:false,error:"exists"});
         const p=passwordHash(password),id=crypto.randomUUID();
         await pool.query("INSERT INTO accounts(id,username,salt,password_hash) VALUES($1,$2,$3,$4)",[id,username,p.salt,p.hash]);
-        await pool.query("INSERT INTO profiles(account_id,display_name,peer_code) VALUES($1,$2,$3)",[id,username,username.toUpperCase().slice(0,12)]);
+        const peerCode="Dsicord #"+String(Math.floor(10000+Math.random()*90000));
+await pool.query("INSERT INTO profiles(account_id,display_name,peer_code) VALUES($1,$2,$3)",[id,username,peerCode]);
         account={id,username};
       }else{
         const q=await pool.query("SELECT id,username,salt,password_hash FROM accounts WHERE username=$1",[username]);
@@ -44,6 +45,11 @@ const server=http.createServer(async(req,res)=>{
     }catch(e){console.error(e);return json(res,500,{ok:false,error:"server"})}
   });return;
 }
+if(req.url==="/api/me"){const session=await getSession(req);if(!session)return json(res,401,{ok:false});const q=await pool.query("SELECT a.id,a.username,p.display_name,p.peer_code,p.avatar_url FROM accounts a LEFT JOIN profiles p ON p.account_id=a.id WHERE a.id=$1",[session.account_id]);return json(res,200,{ok:true,profile:q.rows[0]})}
+if(req.url==="/api/contacts"&&req.method==="GET"){const session=await getSession(req);if(!session)return json(res,401,{ok:false});const q=await pool.query("SELECT a.username,p.display_name,p.peer_code,p.avatar_url FROM contacts c JOIN accounts a ON a.id=c.contact_account_id LEFT JOIN profiles p ON p.account_id=a.id WHERE c.account_id=$1 ORDER BY a.username",[session.account_id]);return json(res,200,{ok:true,contacts:q.rows})}
+if(req.url==="/api/contacts"&&req.method==="POST"){const session=await getSession(req);if(!session)return json(res,401,{ok:false});let body="";req.on("data",c=>body+=c);req.on("end",async()=>{try{const {peerCode}=JSON.parse(body||"{}");const q=await pool.query("SELECT account_id FROM profiles WHERE peer_code=$1",[peerCode]);if(!q.rowCount)return json(res,404,{ok:false,error:"not_found"});if(q.rows[0].account_id===session.account_id)return json(res,400,{ok:false,error:"self"});await pool.query("INSERT INTO contacts(account_id,contact_account_id) VALUES($1,$2) ON CONFLICT DO NOTHING",[session.account_id,q.rows[0].account_id]);return json(res,200,{ok:true})}catch(e){console.error(e);return json(res,500,{ok:false,error:"server"})}});return}
+if(req.url==="/api/messages"&&req.method==="GET"){const session=await getSession(req);if(!session)return json(res,401,{ok:false});const u=new URL(req.url,"http://idors.local");const peerCode=u.searchParams.get("peer");const q=await pool.query("SELECT a.id FROM accounts a JOIN profiles p ON p.account_id=a.id WHERE p.peer_code=$1",[peerCode]);if(!q.rowCount)return json(res,404,{ok:false,error:"not_found"});const r=await pool.query("SELECT m.id,m.body,m.created_at,a.username FROM messages m JOIN accounts a ON a.id=m.sender_id WHERE (m.sender_id=$1 AND m.recipient_id=$2) OR (m.sender_id=$2 AND m.recipient_id=$1) ORDER BY m.created_at ASC",[session.account_id,q.rows[0].id]);return json(res,200,{ok:true,messages:r.rows})}
+if(req.url==="/api/messages"&&req.method==="POST"){const session=await getSession(req);if(!session)return json(res,401,{ok:false});let body="";req.on("data",c=>body+=c);req.on("end",async()=>{try{const {peerCode,message}=JSON.parse(body||"{}");if(typeof message!=="string"||!message.trim()||message.length>4000)return json(res,400,{ok:false,error:"invalid"});const q=await pool.query("SELECT account_id FROM profiles WHERE peer_code=$1",[peerCode]);if(!q.rowCount)return json(res,404,{ok:false,error:"not_found"});const r=await pool.query("INSERT INTO messages(sender_id,recipient_id,body) VALUES($1,$2,$3) RETURNING id,body,created_at",[session.account_id,q.rows[0].account_id,message.trim()]);return json(res,201,{ok:true,message:r.rows[0]})}catch(e){console.error(e);return json(res,500,{ok:false,error:"server"})}});return}
 if(req.url==="/api/logout"){
   const s=await getSession(req);if(s)await pool.query("DELETE FROM sessions WHERE account_id=$1",[s.account_id]);
   res.writeHead(200,{"set-cookie":"idors_session=; Max-Age=0; Path=/"});return res.end("ok")
