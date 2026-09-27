@@ -6,34 +6,41 @@
 <title>iDOrs</title>
 <style>
 *{box-sizing:border-box}
-:root{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#172033;background:#eef2f7}
-body{margin:0;min-height:100vh;display:grid;place-items:center}
-.app{width:min(1120px,100%);height:min(760px,100vh);display:grid;grid-template-columns:300px 1fr;background:#fff;overflow:hidden;box-shadow:0 22px 70px #0002}
-.sidebar{border-right:1px solid #e5e9ef;background:#f8fafc;display:flex;flex-direction:column}
-.brand{padding:22px;font-size:25px;font-weight:800;letter-spacing:-.5px}
-.connection{height:42px;display:flex;align-items:center;justify-content:center;border-top:1px solid #e7ebf0;border-bottom:1px solid #e7ebf0}
-.loader{width:17px;height:17px;border:2px solid #d8e0ea;border-top-color:#2188ff;border-radius:50%;animation:spin .75s linear infinite}
+:root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#fff;background:#090611}
+html,body{margin:0;width:100%;height:100%;overflow:hidden}
+body{position:relative;background:radial-gradient(circle at 15% 15%,#5b21b655 0,transparent 28%),radial-gradient(circle at 85% 20%,#9333ea44 0,transparent 30%),radial-gradient(circle at 50% 100%,#7e22ce3d 0,transparent 34%),#090611}
+body:before,body:after{content:"";position:fixed;border-radius:50%;filter:blur(65px);pointer-events:none;opacity:.7;animation:float 12s ease-in-out infinite alternate}
+body:before{width:320px;height:320px;background:#8b5cf6;left:-100px;top:45%}
+body:after{width:280px;height:280px;background:#c026d3;right:-80px;bottom:8%;animation-delay:-4s}
+@keyframes float{from{transform:translate3d(0,0,0) scale(1)}to{transform:translate3d(35px,-25px,0) scale(1.12)}}
+.app{position:relative;width:100%;height:100%;display:grid;grid-template-columns:300px 1fr;overflow:hidden;background:transparent}
+.sidebar{border-right:1px solid #ffffff14;background:#ffffff08;backdrop-filter:blur(28px) saturate(140%);-webkit-backdrop-filter:blur(28px) saturate(140%);display:flex;flex-direction:column}
+.brand{padding:25px 24px;font-size:27px;font-weight:800;letter-spacing:-1px;color:#fff}
+.connection{height:38px;display:flex;align-items:center;padding:0 24px;color:#bbaed1}
+.loader{width:16px;height:16px;border:2px solid #ffffff20;border-top-color:#c084fc;border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
-.peers{overflow:auto;flex:1}
-.peer{padding:16px 18px;border-bottom:1px solid #e9edf2;cursor:pointer;display:flex;align-items:center;gap:12px}
-.peer:hover,.peer.active{background:#e8f2ff}
-.avatar{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:#dceeff;color:#1683ff;font-weight:800}
-.peer-name{font-weight:650}.peer-state{font-size:11px;opacity:.55;margin-top:2px}
-.chat{display:grid;grid-template-rows:auto 1fr auto;min-width:0}
-.head{height:70px;padding:0 22px;border-bottom:1px solid #e5e9ef;display:flex;align-items:center;gap:12px}
-.head-info{min-width:0}.title{font-weight:750}.subtitle{font-size:12px;opacity:.55;margin-top:2px}
-.status-dot{width:9px;height:9px;border-radius:50%;background:#aab4c1}.status-dot.online{background:#2dbd6e}
-.messages{padding:24px;overflow:auto;background:#f3f6fa}
-.empty{height:100%;display:grid;place-items:center;color:#9aa5b3;font-size:13px;text-align:center}
-.msg{width:max-content;max-width:min(70%,520px);padding:10px 13px;border-radius:15px;background:#fff;margin:7px 0;box-shadow:0 1px 2px #0001;line-height:1.4}
-.mine{margin-left:auto;background:#dceeff}
-.time{font-size:10px;opacity:.45;margin-top:4px;text-align:right}
-.composer{display:flex;gap:10px;padding:14px;border-top:1px solid #e5e9ef;background:#fff}
-.composer input{flex:1;min-width:0;padding:13px 15px;border:1px solid #d5dce5;border-radius:13px;outline:none}
-.composer input:focus{border-color:#2188ff}
-.composer button{border:0;border-radius:13px;padding:0 21px;background:#2188ff;color:#fff;font-weight:750;cursor:pointer}
-.composer button:disabled,.composer input:disabled{opacity:.5;cursor:not-allowed}
-@media(max-width:700px){.app{height:100vh;grid-template-columns:1fr}.sidebar{display:none}}
+.peers{overflow:auto;flex:1;padding:10px 8px}
+.peer{padding:13px 14px;border-radius:16px;cursor:pointer;display:flex;align-items:center;gap:12px;transition:.2s;background:transparent}
+.peer:hover,.peer.active{background:#ffffff10}
+.avatar{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(145deg,#a855f7,#6d28d9);box-shadow:0 8px 28px #7c3aed44;color:#fff;font-weight:800}
+.peer-name{font-weight:650}.peer-state{font-size:11px;color:#b8acc8;margin-top:2px}
+.chat{position:relative;display:grid;grid-template-rows:72px 1fr 76px;min-width:0;background:transparent}
+.head{padding:0 26px;border-bottom:1px solid #ffffff10;display:flex;align-items:center;gap:12px;background:#ffffff05;backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px)}
+.head-info{min-width:0}.title{font-weight:750}.subtitle{font-size:12px;color:#a99bb9;margin-top:2px}
+.status-dot{width:8px;height:8px;border-radius:50%;background:#6b6175;box-shadow:0 0 0 4px #ffffff06}.status-dot.online{background:#c084fc;box-shadow:0 0 14px #c084fc}
+.messages{padding:28px;overflow:auto;background:transparent;scroll-behavior:smooth}
+.empty{height:100%;display:grid;place-items:center;color:#86788f;font-size:13px;text-align:center}
+.msg{width:max-content;max-width:min(70%,560px);padding:11px 14px;border-radius:18px;background:#ffffff0d;border:1px solid #ffffff10;margin:8px 0;box-shadow:0 8px 30px #0002;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);line-height:1.45}
+.mine{margin-left:auto;background:linear-gradient(135deg,#7c3aedcc,#a855f7c7);border-color:#ffffff18;box-shadow:0 10px 32px #7c3aed35}
+.time{font-size:10px;color:#ddd0e6;opacity:.6;margin-top:4px;text-align:right}
+.composer{display:flex;gap:10px;padding:13px 18px;border-top:1px solid #ffffff10;background:#ffffff06;backdrop-filter:blur(26px);-webkit-backdrop-filter:blur(26px)}
+.composer input{flex:1;min-width:0;padding:14px 17px;border:1px solid #ffffff14;border-radius:18px;outline:none;background:#ffffff0b;color:#fff;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
+.composer input::placeholder{color:#8e819a}.composer input:focus{border-color:#a855f766;box-shadow:0 0 0 3px #a855f71a}
+.composer button{border:1px solid #ffffff16;border-radius:18px;padding:0 22px;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;font-weight:750;cursor:pointer;box-shadow:0 8px 26px #7c3aed44;transition:.2s}
+.composer button:hover{transform:translateY(-1px);box-shadow:0 12px 32px #7c3aed5c}
+.composer button:disabled,.composer input:disabled{opacity:.4;cursor:not-allowed}
+::-webkit-scrollbar{width:7px}::-webkit-scrollbar-thumb{background:#ffffff18;border-radius:99px}
+@media(max-width:700px){.app{grid-template-columns:1fr}.sidebar{display:none}}
 </style>
 </head>
 <body>
