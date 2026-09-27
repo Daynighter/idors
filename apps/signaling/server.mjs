@@ -30,7 +30,7 @@ const server=http.createServer(async(req,res)=>{
         if(exists.rowCount)return json(res,409,{ok:false,error:"exists"});
         const p=passwordHash(password),id=crypto.randomUUID();
         await pool.query("INSERT INTO accounts(id,username,salt,password_hash) VALUES($1,$2,$3,$4)",[id,username,p.salt,p.hash]);
-        const peerCode="Dsicord #"+String(Math.floor(10000+Math.random()*90000));
+        const peerCode="#"+String(Math.floor(10000+Math.random()*90000));
 await pool.query("INSERT INTO profiles(account_id,display_name,peer_code) VALUES($1,$2,$3)",[id,username,peerCode]);
         account={id,username};
       }else{
