@@ -9,5 +9,10 @@ const port=Number(process.env.PORT||8787);
 const peers=new Map();
 const server=http.createServer(async(req,res)=>{if(req.url==="/health"){res.writeHead(200,{"content-type":"application/json"});return res.end(JSON.stringify({ok:true,service:"idors-signaling"}));}const file=req.url==="/"?"index.html":req.url.slice(1);try{const body=await readFile(join(webRoot,file));const type=file.endsWith(".js")?"text/javascript":"text/html; charset=utf-8";res.writeHead(200,{"content-type":type});res.end(body)}catch{res.writeHead(404);res.end("Not found")}});
 const wss=new WebSocketServer({server});const send=(ws,data)=>ws.readyState===1&&ws.send(JSON.stringify(data));
-wss.on("connection",ws=>{const id=crypto.randomUUID();peers.set(id,ws);send(ws,{type:"welcome",peerId:id});for(const [otherId,other] of peers)if(otherId!==id)send(ws,{type:"peer",peerId:otherId});ws.on("message",raw=>{let m;try{m=JSON.parse(raw.toString())}catch{return}if(m.type==="signal"&&typeof m.to==="string"){const target=peers.get(m.to);if(target)send(target,{type:"signal",from:id,data:m.data})}});ws.on("close",()=>{peers.delete(id);for(const other of peers.values())send(other,{type:"peer-left",peerId:id})})});
+wss.on("connection",ws=>{const id=crypto.randomUUID();peers.set(id,ws);send(ws,{type:"welcome",peerId:id});for(const [otherId,other] of peers){
+    if(otherId!==id) send(ws,{type:"peer",peerId:otherId});
+  }
+  for(const [otherId,other] of peers){
+    if(otherId!==id) send(other,{type:"peer",peerId:id});
+  }ws.on("message",raw=>{let m;try{m=JSON.parse(raw.toString())}catch{return}if(m.type==="signal"&&typeof m.to==="string"){const target=peers.get(m.to);if(target)send(target,{type:"signal",from:id,data:m.data})}});ws.on("close",()=>{peers.delete(id);for(const other of peers.values())send(other,{type:"peer-left",peerId:id})})});
 server.listen(port,()=>console.log(`iDOrs signaling on http://localhost:${port}`));
