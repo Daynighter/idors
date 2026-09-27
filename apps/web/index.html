@@ -75,6 +75,37 @@ const peerElements=new Map();
 let myId=null;
 let selected=null;
 
+function selectPeer(id){
+  if(!peers.has(id)) return;
+  selected=id;
+  document.querySelectorAll(".peer").forEach(x=>x.classList.toggle("active",x.dataset.peer===id));
+  const row=peerElements.get(id);
+  const label=row?.querySelector(".peer-name")?.textContent||("Peer "+id.slice(0,8));
+  $("title").textContent=label;
+  const state=peers.get(id);
+  $("subtitle").textContent=state?.channel?.readyState==="open"?"Connected":"Connecting…";
+  updateComposer();
+}
+
+function removePeer(id){
+  const state=peers.get(id);
+  try{state?.channel?.close()}catch{}
+  try{state?.pc?.close()}catch{}
+  peers.delete(id);
+  peerElements.get(id)?.remove();
+  peerElements.delete(id);
+  if(selected===id){
+    const next=[...peers.keys()][0];
+    if(next) selectPeer(next);
+    else {
+      selected=null;
+      $("title").textContent="Direct chat";
+      $("subtitle").textContent="Waiting for a peer";
+      updateComposer();
+    }
+  }
+}
+
 const $=id=>document.getElementById(id);
 
 function setConnected(connected){
@@ -115,13 +146,7 @@ function createPeerElement(id){
   row.className="peer";
   row.dataset.peer=id;
   row.innerHTML='<div class="avatar">P</div><div><div class="peer-name">Peer '+id.slice(0,8)+'</div><div class="peer-state">Connecting…</div></div>';
-  row.onclick=()=>{
-    selected=id;
-    document.querySelectorAll(".peer").forEach(x=>x.classList.remove("active"));
-    row.classList.add("active");
-    $("title").textContent="Peer "+id.slice(0,8);
-    updateComposer();
-  };
+  row.onclick=()=>selectPeer(id);
   $("peers").append(row);
   peerElements.set(id,row);
   return row;
@@ -161,11 +186,7 @@ async function connectPeer(id,offerer){
     state.channel=channel;
     channel.onopen=()=>{
       updatePeerUI(id,"Connected");
-      if(!selected){
-        selected=id;
-        createPeerElement(id).classList.add("active");
-        $("title").textContent="Peer "+id.slice(0,8);
-      }
+      if(!selected) selectPeer(id);
       updateComposer();
     };
     channel.onclose=()=>{
@@ -211,23 +232,12 @@ ws.onmessage=async event=>{
     const id=m.peerId;
     if(id===myId)return;
     createPeerElement(id);
-    if(!peers.has(id)){
-      await connectPeer(id,myId<id);
-    }
+    if(!peers.has(id)) await connectPeer(id,myId<id);
     return;
   }
 
   if(m.type==="peer-left"){
-    const row=peerElements.get(m.peerId);
-    row?.remove();
-    peerElements.delete(m.peerId);
-    peers.delete(m.peerId);
-    if(selected===m.peerId){
-      selected=null;
-      $("title").textContent="Direct chat";
-      $("subtitle").textContent="Waiting for a peer";
-      updateComposer();
-    }
+    removePeer(m.peerId);
     return;
   }
 
