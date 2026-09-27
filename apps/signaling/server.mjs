@@ -4,48 +4,61 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { WebSocketServer } from "ws";
+import { pool, initDatabase } from "./db.mjs";
 
 const root=dirname(fileURLToPath(import.meta.url));
 const webRoot=join(root,"../web");
 const port=Number(process.env.PORT||8787);
-const dataDir=process.env.IDORS_DATA_DIR||join(root,"../../data");
-const accountsFile=join(dataDir,"accounts.json");
 const sessionSecret=process.env.SESSION_SECRET||"dev-only-change-this";
-const accounts=new Map(),sessions=new Map(),peers=new Map();
+const peers=new Map();
 
-async function loadAccounts(){try{const raw=await readFile(accountsFile,"utf8");for(const a of JSON.parse(raw))accounts.set(a.username,a)}catch{}}
-async function saveAccounts(){await mkdir(dataDir,{recursive:true});await writeFile(accountsFile,JSON.stringify([...accounts.values()],null,2))}
 function passwordHash(password,salt=crypto.randomBytes(16).toString("hex")){return{salt,hash:crypto.scryptSync(password,salt,64).toString("hex")}}
-function verifyPassword(password,a){const h=crypto.scryptSync(password,a.salt,64),e=Buffer.from(a.passwordHash,"hex");return h.length===e.length&&crypto.timingSafeEqual(h,e)}
-function createSession(username){const token=crypto.createHmac("sha256",sessionSecret).update(username+":"+Date.now()+":"+crypto.randomUUID()).digest("hex");sessions.set(token,{username});return token}
-function getSession(req){const c=req.headers.cookie||"";const t=(c.match(/(?:^|;\\s*)idors_session=([^;]+)/)||[])[1];return t?sessions.get(t):null}
-function json(res,status,data,headers={}){res.writeHead(status,{"content-type":"application/json",...headers});res.end(JSON.stringify(data))}
-await loadAccounts();
-
+function verifyPassword(password,a){const h=crypto.scryptSync(password,a.salt,64),e=Buffer.from(a.password_hash,"hex");return h.length===e.length&&crypto.timingSafeEqual(h,e)}
+function tokenHash(token){return crypto.createHash("sha256").update(token).digest("hex")}
+function createToken(){return crypto.randomBytes(32).toString("hex")}
+async function getSession(req){const c=req.headers.cookie||"";const t=(c.match(/(?:^|;\\s*)idors_session=([^;]+)/)||[])[1];if(!t)return null;const r=await pool.query("SELECT account_id FROM sessions WHERE token_hash=$1",[tokenHash(t)]);return r.rows[0]||null}
 const server=http.createServer(async(req,res)=>{
   if(req.url==="/health")return json(res,200,{ok:true,service:"idors-signaling"});
   if(req.url==="/api/register"||req.url==="/api/login"){
-    let body="";req.on("data",c=>body+=c);req.on("end",async()=>{
-      try{
-        const {username,password}=JSON.parse(body||"{}");
-        if(!/^[a-zA-Z0-9_]{3,24}$/.test(username)||typeof password!=="string"||password.length<8)return json(res,400,{ok:false,error:"invalid"});
-        let account=accounts.get(username);
-        if(req.url==="/api/register"){if(account)return json(res,409,{ok:false,error:"exists"});const p=passwordHash(password);account={username,salt:p.salt,passwordHash:p.hash};accounts.set(username,account);await saveAccounts()}
-        else if(!account||!verifyPassword(password,account))return json(res,401,{ok:false,error:"invalid"});
-        const token=createSession(username);return json(res,200,{ok:true,username},{"set-cookie":`idors_session=${token}; HttpOnly; Secure; SameSite=Lax; Path=/`});
-      }catch{return json(res,400,{ok:false,error:"invalid"})}
-    });return;
-  }
-  if(req.url==="/api/logout"){const s=getSession(req);if(s)for(const[t,v]of sessions)if(v.username===s.username)sessions.delete(t);res.writeHead(200,{"set-cookie":"idors_session=; Max-Age=0; Path=/"});return res.end("ok")}
-  const file=req.url==="/"?"index.html":req.url.slice(1);
+  let body="";req.on("data",c=>body+=c);req.on("end",async()=>{
+    try{
+      const {username,password}=JSON.parse(body||"{}");
+      if(!/^[a-zA-Z0-9_]{3,24}$/.test(username)||typeof password!=="string"||password.length<8)return json(res,400,{ok:false,error:"invalid"});
+      let account;
+      if(req.url==="/api/register"){
+        const exists=await pool.query("SELECT id FROM accounts WHERE username=$1",[username]);
+        if(exists.rowCount)return json(res,409,{ok:false,error:"exists"});
+        const p=passwordHash(password),id=crypto.randomUUID();
+        await pool.query("INSERT INTO accounts(id,username,salt,password_hash) VALUES($1,$2,$3,$4)",[id,username,p.salt,p.hash]);
+        await pool.query("INSERT INTO profiles(account_id,display_name,peer_code) VALUES($1,$2,$3)",[id,username,username.toUpperCase().slice(0,12)]);
+        account={id,username};
+      }else{
+        const q=await pool.query("SELECT id,username,salt,password_hash FROM accounts WHERE username=$1",[username]);
+        if(!q.rowCount||!verifyPassword(password,q.rows[0]))return json(res,401,{ok:false,error:"invalid"});
+        account=q.rows[0];
+      }
+      const token=createToken();
+      await pool.query("DELETE FROM sessions WHERE account_id=$1",[account.id]);
+      await pool.query("INSERT INTO sessions(token_hash,account_id) VALUES($1,$2)",[tokenHash(token),account.id]);
+      return json(res,200,{ok:true,username:account.username},{"set-cookie":`idors_session=${token}; HttpOnly; Secure; SameSite=Lax; Path=/`});
+    }catch(e){console.error(e);return json(res,500,{ok:false,error:"server"})}
+  });return;
+}
+if(req.url==="/api/logout"){
+  const s=await getSession(req);if(s)await pool.query("DELETE FROM sessions WHERE account_id=$1",[s.account_id]);
+  res.writeHead(200,{"set-cookie":"idors_session=; Max-Age=0; Path=/"});return res.end("ok")
+}
+const file=req.url==="/"?"index.html":req.url.slice(1);
   try{const body=await readFile(join(webRoot,file));res.writeHead(200,{"content-type":file.endsWith(".js")?"text/javascript":"text/html; charset=utf-8"});res.end(body)}catch{res.writeHead(404);res.end("Not found")}
 });
 const wss=new WebSocketServer({server});
 const send=(ws,data)=>ws.readyState===1&&ws.send(JSON.stringify(data));
 wss.on("connection",(ws,req)=>{
-  const session=getSession(req);
+  const session=await getSession(req);
   if(!session){ws.close(4001,"AUTH_REQUIRED");return}
-  const username=session.username;
+  const aq=await pool.query("SELECT username FROM accounts WHERE id=$1",[session.account_id]);
+  const username=aq.rows[0]?.username;
+  if(!username){ws.close(4001,"AUTH_REQUIRED");return}
   if([...peers.values()].some(p=>p.username===username)){send(ws,{type:"already-online"});ws.close(4002,"ACCOUNT_ALREADY_CONNECTED");return}
   let id=null;
   send(ws,{type:"auth-ok",username});
