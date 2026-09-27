@@ -14,5 +14,20 @@ wss.on("connection",ws=>{const id=crypto.randomUUID();peers.set(id,ws);send(ws,{
   }
   for(const [otherId,other] of peers){
     if(otherId!==id) send(other,{type:"peer",peerId:id});
-  }ws.on("message",raw=>{let m;try{m=JSON.parse(raw.toString())}catch{return}if(m.type==="signal"&&typeof m.to==="string"){const target=peers.get(m.to);if(target)send(target,{type:"signal",from:id,data:m.data})}});ws.on("close",()=>{peers.delete(id);for(const other of peers.values())send(other,{type:"peer-left",peerId:id})})});
+  }ws.on("message",raw=>{let m;try{m=JSON.parse(raw.toString())}catch{return}if(m.type==="register"&&typeof m.peerId==="string"){
+      id=m.peerId;
+      const previous=peers.get(id);
+      if(previous&&previous!==ws){try{previous.close()}catch{}}
+      peers.set(id,ws);
+      send(ws,{type:"welcome",peerId:id});
+      for(const [otherId,other] of peers){
+        if(otherId!==id) send(ws,{type:"peer",peerId:otherId});
+      }
+      for(const [otherId,other] of peers){
+        if(otherId!==id) send(other,{type:"peer",peerId:id});
+      }
+      return;
+    }
+    if(!id)return;
+    if(m.type==="signal"&&typeof m.to==="string"){const target=peers.get(m.to);if(target)send(target,{type:"signal",from:id,data:m.data})}});ws.on("close",()=>{peers.delete(id);for(const other of peers.values())send(other,{type:"peer-left",peerId:id})})});
 server.listen(port,()=>console.log(`iDOrs signaling on http://localhost:${port}`));
