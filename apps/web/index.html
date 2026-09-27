@@ -41,9 +41,9 @@ body:after{width:260px;height:260px;background:#c026d3;right:-70px;bottom:8%;ani
 .composer button:disabled,.composer input:disabled{opacity:.4;cursor:not-allowed}
 ::-webkit-scrollbar{width:7px}::-webkit-scrollbar-thumb{background:#ffffff18;border-radius:99px}
 @media(max-width:700px){.app{grid-template-columns:1fr}.sidebar{display:none}.head{margin:10px 10px 0}.composer{margin:0 10px 10px}.messages{padding:24px 16px}}
-</style>
+.auth{position:fixed;inset:0;z-index:20;display:grid;place-items:center;background:#090611cc;backdrop-filter:blur(30px)}.auth-box{width:min(380px,calc(100% - 32px));padding:28px;border:1px solid #ffffff16;border-radius:28px;background:#ffffff0b;box-shadow:0 25px 80px #0005}.auth-box h1{margin:0 0 8px}.auth-box p{color:#a99bb9;font-size:13px}.auth-box input{width:100%;margin:7px 0;padding:14px;border:1px solid #ffffff15;border-radius:16px;background:#ffffff0a;color:#fff;outline:none}.auth-box button{width:100%;margin-top:10px;padding:13px;border:0;border-radius:16px;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;font-weight:700}.auth-switch{text-align:center;color:#b9a9c8;font-size:12px;margin-top:14px;cursor:pointer}</style>
 </head>
-<body>
+<body><div id="auth" class="auth"><div class="auth-box"><h1>iDOrs</h1><p id="authText">Sign in to your account</p><input id="username" placeholder="Username" autocomplete="username"><input id="password" type="password" placeholder="Password" autocomplete="current-password"><button id="authBtn">Sign in</button><div id="authSwitch" class="auth-switch">Create an account</div></div></div>
 <div class="app">
 <aside class="sidebar">
   <div class="brand">iDOrs</div>
@@ -69,13 +69,19 @@ body:after{width:260px;height:260px;background:#c026d3;right:-70px;bottom:8%;ani
 </div>
 <script>
 const SIGNALING_URL="wss://idors.onrender.com";
+let authToken=null;
+let registerMode=false;
 const identityKey="idors:peer-id";
 let myId=localStorage.getItem(identityKey);
 if(!myId){
   myId=crypto.randomUUID();
   localStorage.setItem(identityKey,myId);
 }
-const ws=new WebSocket(SIGNALING_URL);
+let ws;
+function startSocket(){ws=new WebSocket(SIGNALING_URL);function handleMessage(event){setConnected(true);ws.send(JSON.stringify({type:"auth",token:authToken}));};/* socket handlers moved to handleMessage */
+/*setConnected(false);$("subtitle").textContent="Reconnecting…";setTimeout(()=>location.reload(),3000)};*/ws.onmessage=handleMessage}
+async function auth(){const username=$("username").value.trim(),password=$("password").value;if(!username||!password)return;const endpoint=registerMode?"/api/register":"/api/login";const r=await fetch(endpoint,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({username,password})});const data=await r.json();if(!data.ok){$("authText").textContent=data.error==="exists"?"Username already exists":"Invalid credentials or password";return}authToken=document.cookie.split("idors_session=")[1]?.split(";")[0]||"";$("auth").remove();startSocket()}
+$("authBtn").onclick=auth;$("authSwitch").onclick=()=>{registerMode=!registerMode;$("authText").textContent=registerMode?"Create your account":"Sign in to your account";$("authBtn").textContent=registerMode?"Create account":"Sign in";$("authSwitch").textContent=registerMode?"I already have an account":"Create an account"};
 const peers=new Map();
 const peerElements=new Map();
 const chats=new Map();
@@ -262,9 +268,13 @@ ws.onclose=()=>{
 
 ws.onerror=()=>setConnected(false);
 
-ws.onmessage=async event=>{
+async function handleMessage(event){
   let m;
   try{m=JSON.parse(event.data)}catch{return}
+
+  if(m.type==="auth-ok"){ws.send(JSON.stringify({type:"register",peerId:myId}));return}
+  if(m.type==="already-online"){alert("This account is already connected on another browser.");ws.close();return}
+  if(m.type==="auth-error"){alert("Session expired. Please sign in again.");location.reload();return}
 
   if(m.type==="welcome"){
     myId=m.peerId;
@@ -319,3 +329,4 @@ $("form").onsubmit=event=>{
 </script>
 </body>
 </html>
+<script>/* iDOrs authentication is required before WebRTC signaling. */</script>
