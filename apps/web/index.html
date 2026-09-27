@@ -72,17 +72,33 @@ const SIGNALING_URL="wss://idors.onrender.com";
 const ws=new WebSocket(SIGNALING_URL);
 const peers=new Map();
 const peerElements=new Map();
+const chats=new Map();
 let myId=null;
 let selected=null;
 
+function renderChat(id){
+  const list=chats.get(id)||[];
+  $("messages").innerHTML="";
+  if(!list.length){
+    const empty=document.createElement("div");
+    empty.id="empty";
+    empty.className="empty";
+    empty.textContent="No messages yet";
+    $("messages").append(empty);
+    return;
+  }
+  for(const message of list) addMessage(message.text,message.mine,message.time);
+  $("messages").scrollTop=$("messages").scrollHeight;
+}
 function selectPeer(id){
   if(!peers.has(id)) return;
   selected=id;
+  if(!chats.has(id)) chats.set(id,[]);
   document.querySelectorAll(".peer").forEach(x=>x.classList.toggle("active",x.dataset.peer===id));
   const row=peerElements.get(id);
   const label=row?.querySelector(".peer-name")?.textContent||("Peer "+id.slice(0,8));
   $("title").textContent=label;
-  $("messages").innerHTML="";
+  renderChat(id);
   const state=peers.get(id);
   $("subtitle").textContent=state?.channel?.readyState==="open"?"Connected":"Connecting…";
   updateComposer();
@@ -118,7 +134,7 @@ function timeNow(){
   return new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
 }
 
-function addMessage(text,mine=false){
+function addMessage(text,mine=false,time=timeNow()){
   $("empty")?.remove();
   const wrap=document.createElement("div");
   wrap.className="msg"+(mine?" mine":"");
@@ -126,7 +142,7 @@ function addMessage(text,mine=false){
   body.textContent=text;
   const time=document.createElement("div");
   time.className="time";
-  time.textContent=timeNow();
+  time.textContent=time;
   wrap.append(body,time);
   $("messages").append(wrap);
   $("messages").scrollTop=$("messages").scrollHeight;
@@ -167,7 +183,8 @@ async function connectPeer(id,offerer){
       {urls:"stun:stun1.l.google.com:19302"}
     ]
   });
-  const state={pc,channel:null,messages:[]};
+  const state={pc,channel:null};
+  chats.set(id,chats.get(id)||[]);
   peers.set(id,state);
   createPeerElement(id);
 
@@ -196,8 +213,9 @@ async function connectPeer(id,offerer){
     };
     channel.onerror=()=>updatePeerUI(id,"Connection error");
     channel.onmessage=e=>{
-      state.messages.push({text:e.data,mine:false,time:timeNow()});
-      if(selected===id) addMessage(e.data,false);
+      const message={text:e.data,mine:false,time:timeNow()};
+      chats.get(id).push(message);
+      if(selected===id) addMessage(message.text,false,message.time);
     };
   };
 
@@ -268,8 +286,10 @@ $("form").onsubmit=event=>{
   const text=$("input").value.trim();
   const channel=selected?peers.get(selected)?.channel:null;
   if(!text||!channel||channel.readyState!=="open")return;
+  const message={text,mine:true,time:timeNow()};
   channel.send(text);
-  addMessage(text,true);
+  chats.get(selected).push(message);
+  addMessage(message.text,true,message.time);
   $("input").value="";
   $("input").focus();
 };
