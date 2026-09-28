@@ -8,40 +8,40 @@
 *{box-sizing:border-box}
 :root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#fff;background:#090611}
 html,body{margin:0;width:100%;height:100%;overflow:hidden}
-body{position:relative;background:radial-gradient(circle at 12% 15%,#6d28d955 0,transparent 28%),radial-gradient(circle at 88% 18%,#a855f744 0,transparent 30%),radial-gradient(circle at 50% 100%,#7e22ce42 0,transparent 35%),#090611}
-body:before,body:after{content:"";position:fixed;border-radius:50%;filter:blur(70px);pointer-events:none;opacity:.7;animation:float 13s ease-in-out infinite alternate}
+body{position:relative;background:#0f0d13}
+body:before,body:after{display:none}
 body:before{width:300px;height:300px;background:#8b5cf6;left:-90px;top:45%}
 body:after{width:260px;height:260px;background:#c026d3;right:-70px;bottom:8%;animation-delay:-4s}
-@keyframes float{from{transform:translate3d(0,0,0) scale(1)}to{transform:translate3d(30px,-22px,0) scale(1.1)}}
-.app{position:relative;width:100%;height:100%;display:grid;grid-template-columns:290px 1fr;overflow:hidden;background:transparent}
-.sidebar{padding:18px;background:transparent;display:flex;flex-direction:column;gap:14px}
-.brand{padding:8px 10px;font-size:27px;font-weight:800;letter-spacing:-1px}
-.connection{height:58px;padding:0 17px;display:flex;align-items:center;gap:10px;border:1px solid #ffffff13;border-radius:20px;background:#ffffff09;box-shadow:0 12px 35px #0002;backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px)}
+
+.app{position:relative;width:100%;height:100%;display:grid;grid-template-columns:280px 1fr;overflow:hidden;background:#0f0d13}
+.sidebar{padding:14px 10px;background:#17131d;border-right:1px solid #2a2232;display:flex;flex-direction:column;gap:10px}
+.brand{padding:10px 12px;font-size:25px;font-weight:800;letter-spacing:-1px;color:#d8b4fe}
+.connection{height:48px;padding:0 14px;display:flex;align-items:center;gap:10px;border:1px solid #2b2433;border-radius:12px;background:#211b27;box-shadow:none}
 .loader{width:15px;height:15px;border:2px solid #ffffff20;border-top-color:#c084fc;border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .peers{overflow:auto;flex:1;display:flex;flex-direction:column;gap:10px;padding:2px}
-.peer{padding:13px;border:1px solid #ffffff12;border-radius:20px;cursor:pointer;display:flex;align-items:center;gap:12px;background:#ffffff08;box-shadow:0 10px 28px #00018;backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);transition:.2s}
-.peer:hover,.peer.active{background:#ffffff12;border-color:#ffffff20;transform:translateY(-1px)}
-.avatar{width:42px;height:42px;border-radius:14px;display:grid;place-items:center;background:linear-gradient(145deg,#a855f7,#6d28d9);box-shadow:0 8px 25px #7c3aed44;color:#fff;font-weight:800}
+.peer{padding:11px;border:1px solid transparent;border-radius:10px;cursor:pointer;display:flex;align-items:center;gap:11px;background:transparent;box-shadow:none;transition:.15s}
+.peer:hover{background:#211b27}.peer.active{background:#2a2035;border-color:#3d2b4d}
+.avatar{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;background:#6d28d9;color:#fff;font-weight:800}
 .peer-name{font-weight:650}.peer-state{font-size:11px;color:#b8acc8;margin-top:3px}.peer-check{margin-left:auto;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:#ffffff0b;color:#a855f7;opacity:0;transition:.2s}.peer.active .peer-check{opacity:1}
-.chat{position:relative;display:grid;grid-template-rows:76px 1fr 84px;min-width:0;background:transparent}
-.head{margin:14px 18px 0;padding:0 18px;border:1px solid #ffffff12;border-radius:22px;display:flex;align-items:center;gap:12px;background:#ffffff08;box-shadow:0 12px 35px #0002;backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px)}
+.chat{position:relative;display:grid;grid-template-rows:64px 1fr 76px;min-width:0;background:#0f0d13}
+.head{margin:0;padding:0 24px;border-bottom:1px solid #27212d;display:flex;align-items:center;gap:12px;background:#0f0d13}
 .head-info{min-width:0}.title{font-weight:750}.subtitle{font-size:12px;color:#a99bb9;margin-top:2px}
 .status-dot{width:8px;height:8px;border-radius:50%;background:#6b6175;box-shadow:0 0 0 4px #ffffff06}.status-dot.online{background:#c084fc;box-shadow:0 0 14px #c084fc}
-.messages{padding:32px 28px;overflow:auto;background:transparent;scroll-behavior:smooth}
+.messages{padding:28px max(24px,calc((100% - 820px)/2));overflow:auto;background:#0f0d13;scroll-behavior:smooth}
 .empty{height:100%;display:grid;place-items:center;color:#86788f;font-size:13px;text-align:center}
-.msg{width:max-content;max-width:min(70%,560px);padding:11px 15px;border-radius:20px;background:#ffffff0d;border:1px solid #ffffff0e;margin:9px 0;box-shadow:0 8px 28px #00018;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);line-height:1.45}
-.mine{margin-left:auto;background:linear-gradient(135deg,#7c3aedd9,#a855f7d1);border-color:#ffffff18;box-shadow:0 10px 30px #7c3aed35}
+.msg{width:max-content;max-width:min(72%,650px);padding:11px 15px;border-radius:18px;background:#211c25;border:1px solid #2b2530;margin:9px 0;box-shadow:none;line-height:1.45}
+.mine{margin-left:auto;background:#6d28d9;border-color:#7c3aed;box-shadow:none}
 .time{font-size:10px;color:#ddd0e6;opacity:.6;margin-top:4px;text-align:right}
-.composer{margin:0 18px 18px;padding:10px;border:1px solid #ffffff14;border-radius:24px;background:#ffffff0a;box-shadow:0 14px 40px #00025;backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px);display:flex;gap:8px}
+.composer{width:min(820px,calc(100% - 32px));margin:0 auto 14px;padding:6px 8px;border:1px solid #332b39;border-radius:22px;background:#211c25;box-shadow:0 8px 30px #0005;display:flex;gap:6px;align-items:center}
 .composer input{flex:1;min-width:0;padding:13px 16px;border:0;outline:none;background:transparent;color:#fff;font-size:15px}
 .composer input::placeholder{color:#91849e}.composer input:focus{outline:none}
-.composer button{border:0;border-radius:18px;padding:0 20px;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;font-weight:750;cursor:pointer;box-shadow:0 7px 22px #7c3aed40;transition:.2s}
+.composer button{border:0;border-radius:15px;min-width:40px;height:40px;padding:0 14px;background:#7c3aed;color:#fff;font-weight:750;cursor:pointer;box-shadow:none;transition:.2s}
 .composer button:hover{transform:scale(1.02)}
 .composer button:disabled,.composer input:disabled{opacity:.4;cursor:not-allowed}
 ::-webkit-scrollbar{width:7px}::-webkit-scrollbar-thumb{background:#ffffff18;border-radius:99px}
 @media(max-width:700px){.app{grid-template-columns:1fr}.sidebar{display:none}.head{margin:10px 10px 0}.composer{margin:0 10px 10px}.messages{padding:24px 16px}}
-.auth{position:fixed;inset:0;z-index:20;display:grid;place-items:center;background:#090611cc;backdrop-filter:blur(30px)}.auth-box{width:min(380px,calc(100% - 32px));padding:28px;border:1px solid #ffffff16;border-radius:28px;background:#ffffff0b;box-shadow:0 25px 80px #0005}.auth-box h1{margin:0 0 8px}.auth-box p{color:#a99bb9;font-size:13px}.auth-box input{width:100%;margin:7px 0;padding:14px;border:1px solid #ffffff15;border-radius:16px;background:#ffffff0a;color:#fff;outline:none}.auth-box button{width:100%;margin-top:10px;padding:13px;border:0;border-radius:16px;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;font-weight:700}.auth-switch{text-align:center;color:#b9a9c8;font-size:12px;margin-top:14px;cursor:pointer}</style>
+.auth{position:fixed;inset:0;z-index:20;display:grid;place-items:center;background:#0f0d13}.auth-box{width:min(380px,calc(100% - 32px));padding:28px;border:1px solid #332b39;border-radius:18px;background:#17131d;box-shadow:0 25px 80px #0005}.auth-box h1{margin:0 0 8px}.auth-box p{color:#a99bb9;font-size:13px}.auth-box input{width:100%;margin:7px 0;padding:14px;border:1px solid #ffffff15;border-radius:16px;background:#ffffff0a;color:#fff;outline:none}.auth-box button{width:100%;margin-top:10px;padding:13px;border:0;border-radius:16px;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;font-weight:700}.auth-switch{text-align:center;color:#b9a9c8;font-size:12px;margin-top:14px;cursor:pointer}.attach{border:0;background:transparent;color:#b78be8;font-size:24px;width:40px;height:40px;border-radius:12px;cursor:pointer}.attach:hover{background:#30263a}.file-card{display:flex;align-items:center;gap:10px}.file-card a{color:#fff;text-decoration:none}.file-meta{font-size:11px;opacity:.65;margin-top:2px}</style>
 </head>
 <body><div id="auth" class="auth"><div class="auth-box"><h1>iDors</h1><p id="authText">Sign in to your account</p><div id="authError" style="min-height:18px;color:#f0b4ff;font-size:12px"></div><input id="username" placeholder="Username" autocomplete="username"><input id="password" type="password" placeholder="Password" autocomplete="current-password"><button id="authBtn">Sign in</button><div id="authSwitch" class="auth-switch">Create an account</div></div></div>
 <div class="app">
@@ -99,7 +99,7 @@ function renderChat(id){
   $("messages").innerHTML="";
   const list=chats.get(id)||[];
   if(!list.length){const e=document.createElement("div");e.id="empty";e.className="empty";e.textContent="No messages yet";$("messages").append(e);return;}
-  for(const m of list)addMessage(m.text,m.mine,m.time);
+  for(const m of list)m.file?addFileMessage(m):addMessage(m.text,m.mine,m.time);
 }
 function updateComposer(){
   const ch=selected?peers.get(selected)?.channel:null;
@@ -139,7 +139,7 @@ async function connectPeer(id,offerer){
     channel.onopen=()=>{updatePeerUI(id,"Connected");if(!selected)selectPeer(id);updateComposer();};
     channel.onclose=()=>{updatePeerUI(id,"Disconnected");updateComposer();};
     channel.onerror=()=>updatePeerUI(id,"Connection error");
-    channel.onmessage=e=>{const m={text:e.data,mine:false,time:timeNow()};chats.get(id).push(m);saveChats();if(selected===id)addMessage(m.text,false,m.time);};
+    channel.onmessage=e=>{let incoming=e.data;try{incoming=JSON.parse(e.data)}catch{} if(incoming&&incoming.kind==="file"){const m={...incoming,mine:false,time:timeNow()};chats.get(id).push(m);saveChats();if(selected===id)addFileMessage(m);return;} const m={text:String(incoming),mine:false,time:timeNow()};chats.get(id).push(m);saveChats();if(selected===id)addMessage(m.text,false,m.time);};
   };
   if(offerer){attach(pc.createDataChannel("idors-chat"));await pc.setLocalDescription(await pc.createOffer());ws.send(JSON.stringify({type:"signal",to:id,data:{description:pc.localDescription}}));}
   else pc.ondatachannel=e=>attach(e.channel);
@@ -194,6 +194,9 @@ async function startSocket(){
   };
 }
 
+$("attach").onclick=()=>$("fileInput").click();
+$("fileInput").onchange=async()=>{const file=$("fileInput").files?.[0];if(!file||!selected)return;if(file.size>8*1024*1024){alert("Archivo demasiado grande (máximo 8 MB).");return;}const channel=peers.get(selected)?.channel;if(!channel||channel.readyState!=="open")return;const reader=new FileReader();reader.onload=()=>{const packet={kind:"file",name:file.name,type:file.type,size:file.size,data:reader.result};channel.send(JSON.stringify(packet));const m={file:true,name:file.name,type:file.type,size:file.size,data:reader.result,mine:true,time:timeNow()};chats.get(selected).push(m);saveChats();renderChat(selected);};reader.readAsDataURL(file);$("fileInput").value="";};
+function addFileMessage(m){$("empty")?.remove();const wrap=document.createElement("div");wrap.className="msg"+(m.mine?" mine":"");const box=document.createElement("div");box.className="file-card";const a=document.createElement("a");a.href=m.data;a.download=m.name;a.textContent="⬇ "+m.name;a.target="_blank";box.append(a);const meta=document.createElement("div");meta.className="file-meta";meta.textContent=Math.max(1,Math.round((m.size||0)/1024))+" KB";wrap.append(box,meta);const stamp=document.createElement("div");stamp.className="time";stamp.textContent=m.time;wrap.append(stamp);$("messages").append(wrap);$("messages").scrollTop=$("messages").scrollHeight;}
 $("form").onsubmit=event=>{
   event.preventDefault();
   const text=$("input").value.trim(),channel=selected?peers.get(selected)?.channel:null;
